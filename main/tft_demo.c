@@ -1370,7 +1370,7 @@ void app_main()
 	tft_font_forceFixed = 0;
 	tft_gray_scale = 0;
     TFT_setGammaCurve(DEFAULT_GAMMA_CURVE);
-	TFT_setRotation(PORTRAIT);
+	TFT_setRotation(LANDSCAPE);
 	TFT_setFont(DEFAULT_FONT, NULL);
 	TFT_resetclipwin();
 
@@ -1415,16 +1415,16 @@ void app_main()
     tft_fg = TFT_CYAN;
 	TFT_print("Initializing SPIFFS...", CENTER, CENTER);
     // ==== Initialize the file system ====
-    printf("\r\n\n");
-	vfs_spiffs_register();
-    if (!spiffs_is_mounted) {
-    	tft_fg = TFT_RED;
-    	TFT_print("SPIFFS not mounted !", CENTER, LASTY+TFT_getfontheight()+2);
-    }
-    else {
-    	tft_fg = TFT_GREEN;
-    	TFT_print("SPIFFS Mounted.", CENTER, LASTY+TFT_getfontheight()+2);
-    }
+    // printf("\r\n\n");
+	// vfs_spiffs_register();
+    // if (!spiffs_is_mounted) {
+    // 	tft_fg = TFT_RED;
+    // 	TFT_print("SPIFFS not mounted !", CENTER, LASTY+TFT_getfontheight()+2);
+    // }
+    // else {
+    // 	tft_fg = TFT_GREEN;
+    // 	TFT_print("SPIFFS Mounted.", CENTER, LASTY+TFT_getfontheight()+2);
+    // }
 
 	Wait(-2000);
 
