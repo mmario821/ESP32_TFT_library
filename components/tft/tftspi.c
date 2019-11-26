@@ -5,7 +5,7 @@
  *
  * HIGH SPEED LOW LEVEL DISPLAY FUNCTIONS
  * USING DIRECT or DMA SPI TRANSFER MODEs
- *
+ *`
 */
 
 #include <string.h>
@@ -939,9 +939,20 @@ void TFT_display_init()
 	TFT_pushColorRep(0, 0, tft_width-1, tft_height-1, (color_t){0,0,0}, (uint32_t)(tft_height*tft_width));
 
 	///Enable backlight
+	TFT_BacklightOn();
+}
+
+void TFT_BacklightOn()
+{
 #if PIN_NUM_BCKL
     gpio_set_level(PIN_NUM_BCKL, PIN_BCKL_ON);
 #endif
 }
 
+void TFT_BacklightOff()
+{
+#if PIN_NUM_BCKL
+    gpio_set_level(PIN_NUM_BCKL, PIN_BCKL_OFF);
+#endif
+}
 

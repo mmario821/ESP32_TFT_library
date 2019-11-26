@@ -691,6 +691,12 @@ void TFT_PinsInit();
 //======================
 void TFT_display_init();
 
+// Turn backlight ON
+void TFT_BacklightOn();
+
+// Turn backlight OFF
+void TFT_BacklightOff();
+
 //===================
 void stmpe610_Init();
 
