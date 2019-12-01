@@ -26,10 +26,13 @@ sdkconfig.lobo
 BUILD
 PBUILD
 build/
+cmake-build-debug/
+.idea/
 temp/
 local/
 *.dis
 *.elf
 *.map
 **/.DS_Store
+mkspiffs/
 .vscode/*
