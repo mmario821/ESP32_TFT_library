@@ -35,3 +35,4 @@ local/
 *.map
 **/.DS_Store
 mkspiffs/
+.vscode/*

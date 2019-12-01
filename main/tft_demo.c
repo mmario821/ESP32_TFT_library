@@ -16,7 +16,7 @@
 
 #include "tftspi.h"
 #include "tft.h"
-#include "spiffs_vfs.h"
+#include "esp_spiffs.h"
 
 #include "driver/gpio.h"
 
@@ -39,11 +39,13 @@
 #define PIN_BUTTON_A 39
 #define DISPLAY_ON_TIME_MSEC 5000
 
-static uint8_t doprint = 1;
 static struct tm* tm_info;
 static char tmp_buff[64];
 static time_t time_now, time_last = 0;
-static const char *file_fonts[3] = {"/spiffs/fonts/DotMatrix_M.fon", "/spiffs/fonts/Ubuntu.fon", "/spiffs/fonts/Grotesk24x48.fon"};
+
+char imgbuf[40960];
+
+#define SPIFFS_BASE_PATH ""
 
 #define GDEMO_TIME 1000
 #define GDEMO_INFO_TIME 5000
@@ -246,21 +248,6 @@ static void _checkTime()
 	}
 }
 
-/*
-//----------------------
-static int _checkTouch()
-{
-	int tx, ty;
-	if (TFT_read_touch(&tx, &ty, 0)) {
-		while (TFT_read_touch(&tx, &ty, 1)) {
-			vTaskDelay(20 / portTICK_RATE_MS);
-		}
-		return 1;
-	}
-	return 0;
-}
-*/
-
 //---------------------
 static int Wait(int ms)
 {
@@ -359,51 +346,17 @@ static void update_header(char *hdr, char *ftr)
 
 // Image demo
 //-------------------------
-static void disp_images() {
-    uint32_t tstart;
-
-	disp_header("JPEG IMAGES");
-
-	if (spiffs_is_mounted) {
-		// ** Show scaled (1/8, 1/4, 1/2 size) JPG images
-		TFT_jpg_image(CENTER, CENTER, 3, SPIFFS_BASE_PATH"/images/test1.jpg", NULL, 0);
-		Wait(500);
-
-		TFT_jpg_image(CENTER, CENTER, 2, SPIFFS_BASE_PATH"/images/test2.jpg", NULL, 0);
-		Wait(500);
-
-		TFT_jpg_image(CENTER, CENTER, 1, SPIFFS_BASE_PATH"/images/test4.jpg", NULL, 0);
-		Wait(500);
-
-		// ** Show full size JPG image
-		tstart = clock();
-		TFT_jpg_image(CENTER, CENTER, 0, SPIFFS_BASE_PATH"/images/test3.jpg", NULL, 0);
-		tstart = clock() - tstart;
-		if (doprint) printf("       JPG Decode time: %u ms\r\n", tstart);
-		sprintf(tmp_buff, "Decode time: %u ms", tstart);
-		update_header(NULL, tmp_buff);
-		Wait(-GDEMO_INFO_TIME);
-
-		// ** Show BMP image
-		update_header("BMP IMAGE", "");
-		for (int scale=5; scale >= 0; scale--) {
-			tstart = clock();
-			TFT_bmp_image(CENTER, CENTER, scale, SPIFFS_BASE_PATH"/images/tiger.bmp", NULL, 0);
-			tstart = clock() - tstart;
-			if (doprint) printf("    BMP time, scale: %d: %u ms\r\n", scale, tstart);
-			sprintf(tmp_buff, "Decode time: %u ms", tstart);
-			update_header(NULL, tmp_buff);
-			Wait(-500);
-		}
-		Wait(-GDEMO_INFO_TIME);
-	}
-	else if (doprint) printf("  No file system found.\r\n");
+static void disp_images() 
+{
+	// ** Show scaled (1/8, 1/4, 1/2 size) JPG images
+	TFT_jpg_image(CENTER, CENTER, 0, NULL, (uint8_t*)imgbuf, sizeof(imgbuf));
+	Wait(10000);
 }
 
 //---------------------
 static void font_demo()
 {
-	disp_header("7-SEG FONT DEMO");
+	// disp_header("7-SEG FONT DEMO");
 
 	TFT_setFont(FONT_7SEG, NULL);
 	int last_sec = 0;
@@ -459,10 +412,7 @@ void tft_demo() {
             sprintf(dtype, "Unknown");
     }
     
-    uint8_t disp_rot = LANDSCAPE;
-	doprint = 1;
-
-	TFT_setRotation(disp_rot);
+	TFT_setRotation(LANDSCAPE);
 
 	while (1) {
 		font_demo();
@@ -602,18 +552,64 @@ void app_main()
 	disp_header("File system INIT");
     tft_fg = TFT_CYAN;
 	TFT_print("Initializing SPIFFS...", CENTER, CENTER);
-    // ==== Initialize the file system ====
-    // printf("\r\n\n");
-	// vfs_spiffs_register();
-    // if (!spiffs_is_mounted) {
-    // 	tft_fg = TFT_RED;
-    // 	TFT_print("SPIFFS not mounted !", CENTER, LASTY+TFT_getfontheight()+2);
-    // }
-    // else {
-    // 	tft_fg = TFT_GREEN;
-    // 	TFT_print("SPIFFS Mounted.", CENTER, LASTY+TFT_getfontheight()+2);
-    // }
-	// disp_images();
+
+    esp_vfs_spiffs_conf_t conf = {
+      .base_path = "/spiffs",
+      .partition_label = NULL,
+      .max_files = 5,
+      .format_if_mount_failed = false
+    };
+
+    // Use settings defined above to initialize and mount SPIFFS filesystem.
+    // Note: esp_vfs_spiffs_register is an all-in-one convenience function.
+    esp_err_t retFFS = esp_vfs_spiffs_register(&conf);
+
+    if (retFFS != ESP_OK) {
+        if (retFFS == ESP_FAIL) {
+            ESP_LOGE(tag, "Failed to mount or format filesystem");
+        } else if (retFFS == ESP_ERR_NOT_FOUND) {
+            ESP_LOGE(tag, "Failed to find SPIFFS partition");
+        } else {
+            ESP_LOGE(tag, "Failed to initialize SPIFFS (%s)", esp_err_to_name(ret));
+        }
+        return;
+    }
+	else
+	{
+		ESP_LOGI(tag, "spiFFS inititalized");
+	}
+	
+    size_t total = 0, used = 0;
+    retFFS = esp_spiffs_info(NULL, &total, &used);
+    if (ret != ESP_OK) {
+        ESP_LOGE(tag, "Failed to get SPIFFS partition information (%s)", esp_err_to_name(ret));
+    } else {
+        ESP_LOGI(tag, "Partition size: total: %d, used: %d", total, used);
+    }
+
+    // Open for reading hello.txt
+    FILE* f = fopen("/spiffs/test1.jpg", "r");
+    if (f == NULL) {
+        ESP_LOGE(tag, "Failed to open test1.jpg");
+        return;
+    }
+	else
+	{
+		ESP_LOGI(tag, "File opened with success");
+
+		memset(imgbuf, 0, sizeof(imgbuf));
+		int readBytes = fread(imgbuf, 1, sizeof(imgbuf), f);
+		fclose(f);
+
+		// Display the read contents from the file
+		ESP_LOGI(tag, "Read from test1.jpg: %d", readBytes);
+	}
+	
+	fclose(f);
+
+	TFT_resetclipwin();
+	TFT_invertDisplay(INVERT_ON);
+	disp_images();
 
 	initialize_button_a();
 
